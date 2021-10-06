@@ -29,7 +29,6 @@ enum CompileError {
 
 #[derive(Debug)]
 enum RuntimeError {
-    CannotDecr,
     CannotMoveLeft,
 }
 
@@ -108,12 +107,18 @@ impl VM {
                         return Err(RuntimeError::CannotMoveLeft);
                     }
                 }
-                Instr::Incr => self.data[self.cursor] += 1,
+                Instr::Incr => {
+                    if self.data[self.cursor] < 255 {
+                        self.data[self.cursor] += 1
+                    } else {
+                        self.data[self.cursor] = 0
+                    }
+                }
                 Instr::Decr => {
                     if self.data[self.cursor] > 0 {
                         self.data[self.cursor] -= 1
                     } else {
-                        return Err(RuntimeError::CannotDecr);
+                        self.data[self.cursor] = 255
                     }
                 }
                 Instr::Output => print!("{}", self.data[self.cursor] as char),
@@ -125,7 +130,7 @@ impl VM {
                 }
                 Instr::Block(p) => {
                     while self.data[self.cursor] != 0 {
-                        self.execute(&p).unwrap()
+                        self.execute(&p)?
                     }
                 }
             }
