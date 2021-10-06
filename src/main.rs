@@ -33,7 +33,7 @@ enum RuntimeError {
 }
 
 impl Program {
-    fn parse(input: &mut Chars, block: bool) -> Result<Self, CompileError> {
+    fn parse(input: &mut impl Iterator<Item = char>, block: bool) -> Result<Self, CompileError> {
         let mut program: Vec<Instr> = Vec::new();
         let mut next: Option<char> = input.next();
         while next != None {
@@ -44,19 +44,12 @@ impl Program {
                 '-' => Instr::Decr,
                 '.' => Instr::Output,
                 ',' => Instr::Input,
-                '[' => {
-                    let p = match Program::parse(input, true) {
-                        Ok(p) => p,
-                        Err(e) => return Err(e),
-                    };
-                    Instr::Block(p)
-                }
+                '[' => Instr::Block(Program::parse(input, true)?),
                 ']' => {
-                    if block {
-                        return Ok(Program(program));
-                    } else {
-                        return Err(CompileError::ExcessiveBracket);
-                    }
+                    return block
+                        .then(|| ())
+                        .map(|_| Program(program))
+                        .ok_or(CompileError::ExcessiveBracket)
                 }
                 _ => {
                     next = input.next();
@@ -66,11 +59,10 @@ impl Program {
             program.push(instr);
             next = input.next();
         }
-        if block {
-            return Err(CompileError::MissingBracket);
-        } else {
-            Ok(Program(program))
-        }
+        (!block)
+            .then(|| ())
+            .map(|_| Program(program))
+            .ok_or(CompileError::MissingBracket)
     }
 }
 
